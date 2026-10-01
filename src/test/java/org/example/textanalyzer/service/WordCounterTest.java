@@ -1,5 +1,6 @@
 package org.example.textanalyzer.service;
 
+import org.example.textanalyzer.config.MultithreadingMode;
 import org.example.textanalyzer.model.CountTopWordsResult;
 import org.example.textanalyzer.model.WordCount;
 import org.example.textanalyzer.parser.FileParser;
@@ -18,8 +19,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -36,7 +36,7 @@ class WordCounterTest {
         List<Path> paths = null;
         ParsingOptions parsingOptions = new ParsingOptions(0, Collections.emptySet());
 
-        assertThrows(NullPointerException.class, () -> wordCounter.countTopWords(paths, 3, parsingOptions));
+        assertThrows(NullPointerException.class, () -> wordCounter.countTopWords(paths, 3, parsingOptions, 2, MultithreadingMode.MULTI));
     }
 
     @Test
@@ -44,15 +44,16 @@ class WordCounterTest {
         List<Path> paths = Collections.emptyList();
         ParsingOptions parsingOptions = null;
 
-        assertThrows(NullPointerException.class, () -> wordCounter.countTopWords(paths, 3, parsingOptions));
+        assertThrows(NullPointerException.class, () -> wordCounter.countTopWords(paths, 3, parsingOptions, 2, MultithreadingMode.MULTI));
     }
 
     @Test
     void shouldThrowWhenTopWordsLessThanZero() {
         ParsingOptions parsingOptions = new ParsingOptions(0, Collections.emptySet());
+        List<Path> emptyList = Collections.emptyList();
 
-        assertThrows(IllegalArgumentException.class, () -> wordCounter.countTopWords(Collections.emptyList(), 0, parsingOptions));
-        assertThrows(IllegalArgumentException.class, () -> wordCounter.countTopWords(Collections.emptyList(), -10, parsingOptions));
+        assertThrows(IllegalArgumentException.class, () -> wordCounter.countTopWords(emptyList, 0, parsingOptions, 2, MultithreadingMode.MULTI));
+        assertThrows(IllegalArgumentException.class, () -> wordCounter.countTopWords(emptyList, -10, parsingOptions, 2, MultithreadingMode.MULTI));
     }
 
     @Test
@@ -66,7 +67,7 @@ class WordCounterTest {
                 .thenReturn(new ParsingResult(List.of("test", "word", "word"), null));
 
         CountTopWordsResult result = wordCounter.countTopWords(
-                List.of(file1, file2), 10, new ParsingOptions(0, Collections.emptySet()));
+                List.of(file1, file2), 10, new ParsingOptions(0, Collections.emptySet()), 2, MultithreadingMode.MULTI);
 
         assertThat(result).isNotNull();
         assertThat(result.wordCounts()).hasSize(2);
@@ -80,7 +81,7 @@ class WordCounterTest {
     @Test
     void shouldReturnEmptyResultWhenListOfPathsIsEmpty() {
         CountTopWordsResult result = wordCounter.countTopWords(
-                List.of(), 10, new ParsingOptions(0, Collections.emptySet()));
+                List.of(), 10, new ParsingOptions(0, Collections.emptySet()), 2, MultithreadingMode.MULTI);
 
         assertThat(result).isNotNull();
         assertThat(result.wordCounts()).isEmpty();
@@ -99,7 +100,7 @@ class WordCounterTest {
                 .thenReturn(new ParsingResult(List.of(), new ParsingError(file1.getFileName().toString(), "File is empty.")));
 
         CountTopWordsResult result = wordCounter.countTopWords(
-                List.of(file1, file2), 10, new ParsingOptions(0, Collections.emptySet()));
+                List.of(file1, file2), 10, new ParsingOptions(0, Collections.emptySet()), 2, MultithreadingMode.MULTI);
 
         assertThat(result).isNotNull();
         assertThat(result.wordCounts()).isEmpty();
@@ -109,7 +110,7 @@ class WordCounterTest {
     }
 
     @Test
-    void shouldCollectErrorsFromMultipleFiles() throws Exception {
+    void shouldCollectErrorsFromMultipleFiles() {
         Path validFile = Path.of("validFile.txt");
         Path invalidFile = Path.of("invalidFile.txt");
         Path emptyFile = Path.of("emptyFile.txt");
@@ -126,7 +127,7 @@ class WordCounterTest {
                 .thenReturn(new ParsingResult(List.of(),
                         new ParsingError(emptyFile.getFileName().toString(), "File is empty.")));
 
-        CountTopWordsResult result = wordCounter.countTopWords(paths, 10, parsingOptions);
+        CountTopWordsResult result = wordCounter.countTopWords(paths, 10, parsingOptions, 2, MultithreadingMode.MULTI);
         List<ParsingError> parsingErrorList = result.parsingErrors();
 
         assertThat(parsingErrorList).isNotNull()
@@ -144,7 +145,7 @@ class WordCounterTest {
                 .thenReturn(new ParsingResult(List.of("test1", "test1", "test1", "test2", "test2", "test3", "test4"), null));
 
         ParsingOptions parsingOptions = new ParsingOptions(0, Collections.emptySet());
-        CountTopWordsResult result = wordCounter.countTopWords(List.of(file), 2, parsingOptions);
+        CountTopWordsResult result = wordCounter.countTopWords(List.of(file), 2, parsingOptions, 2, MultithreadingMode.MULTI);
         List<WordCount> wordCountList = result.wordCounts();
 
         assertThat(wordCountList)
@@ -164,7 +165,7 @@ class WordCounterTest {
 
 
         ParsingOptions parsingOptions = new ParsingOptions(0, Collections.emptySet());
-        CountTopWordsResult result = wordCounter.countTopWords(List.of(file), 10, parsingOptions);
+        CountTopWordsResult result = wordCounter.countTopWords(List.of(file), 10, parsingOptions, 2, MultithreadingMode.MULTI);
         List<WordCount> wordCountList = result.wordCounts();
 
         assertThat(wordCountList)
@@ -174,6 +175,53 @@ class WordCounterTest {
         assertThat(wordCountList)
                 .extracting(WordCount::word)
                 .containsExactly("test1", "test2", "test3");
+    }
+
+    @Test
+    void multiThreadResultShouldMatchSingleThreadResult() {
+        Path file = Path.of("file.txt");
+
+        when(fileParser.parseWithParsingOptions(eq(file), any()))
+                .thenReturn(new ParsingResult(List.of("test1", "test1", "test1", "test2", "test2", "test3"), null));
+        ParsingOptions parsingOptions = new ParsingOptions(0, Collections.emptySet());
+        CountTopWordsResult singleModeResult = wordCounter.countTopWords(List.of(file), 10, parsingOptions, 4, MultithreadingMode.SINGLE);
+        CountTopWordsResult multithreadingModeResult = wordCounter.countTopWords(List.of(file), 10, parsingOptions, 4, MultithreadingMode.MULTI);
+
+        assertEquals(singleModeResult, multithreadingModeResult);
+
+    }
+
+    @Test
+    void shouldCollectErrorsFromMultipleFilesInMultithreadingMode() {
+        Path validFile = Path.of("validFile.txt");
+        Path invalidFile = Path.of("invalidFile.txt");
+        Path emptyFile = Path.of("emptyFile.txt");
+
+        List<Path> paths = List.of(validFile, invalidFile, emptyFile);
+        ParsingOptions parsingOptions = new ParsingOptions(0, Collections.emptySet());
+
+        when(fileParser.parseWithParsingOptions(eq(validFile), any()))
+                .thenReturn(new ParsingResult(List.of("test"), null));
+        when(fileParser.parseWithParsingOptions(eq(invalidFile), any()))
+                .thenReturn(new ParsingResult(List.of(),
+                        new ParsingError(invalidFile.getFileName().toString(), "Failed to read.")));
+        when(fileParser.parseWithParsingOptions(eq(emptyFile), any()))
+                .thenReturn(new ParsingResult(List.of(),
+                        new ParsingError(emptyFile.getFileName().toString(), "File is empty.")));
+
+        CountTopWordsResult result = wordCounter.countTopWords(paths, 10, parsingOptions, 4, MultithreadingMode.MULTI);
+        List<ParsingError> parsingErrorList = result.parsingErrors();
+
+        assertThat(parsingErrorList).isNotNull()
+                .hasSize(2);
+        assertThat(parsingErrorList)
+                .extracting(ParsingError::file)
+                .containsExactlyInAnyOrder("invalidFile.txt", "emptyFile.txt");
+        assertThat(result.wordCounts()).isNotNull()
+                .isNotEmpty()
+                .hasSize(1)
+                .extracting(WordCount::word)
+                .containsExactly("test");
     }
 
 }
