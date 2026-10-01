@@ -1,4 +1,8 @@
 package org.example.textanalyzer.model;
 
-public record AnalysisInfo(String directory, int minWordLength, int topCount) {
+import org.example.textanalyzer.config.MultithreadingMode;
+
+public record AnalysisInfo(String directory, int minWordLength, int topCount,
+                           MultithreadingMode mode, int threads, int processedFiles,
+                           long executionTimeMs) {
 }

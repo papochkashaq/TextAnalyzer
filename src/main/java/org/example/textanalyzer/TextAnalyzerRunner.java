@@ -1,5 +1,6 @@
 package org.example.textanalyzer;
 
+import org.example.textanalyzer.config.MultithreadingMode;
 import org.example.textanalyzer.io.FileCollector;
 import org.example.textanalyzer.model.AnalysisInfo;
 import org.example.textanalyzer.model.CountTopWordsResult;
@@ -47,6 +48,10 @@ public class TextAnalyzerRunner implements Callable<Integer> {
     private Path outputPath;
     @CommandLine.Option(names = "--stopwords", description = "Path to file with stop words")
     private Path stopWordsPath;
+    @CommandLine.Option(names = "--threads", description = "Number of threads", defaultValue = "2")
+    private int threads;
+    @CommandLine.Option(names = "--mode", description = "Multithreading mode", defaultValue = "MULTI")
+    private MultithreadingMode mode;
 
 
     public TextAnalyzerRunner(FileParser fileParser, FileCollector fileCollector, WordCounter wordCounter, Printer printer) {
@@ -69,14 +74,19 @@ public class TextAnalyzerRunner implements Callable<Integer> {
 
             List<Path> files = fileCollector.collectFiles(dirPath);
             ParsingOptions parsingOptions = new ParsingOptions(minLength, stopWords);
-            CountTopWordsResult countTopWordsResult = wordCounter.countTopWords(files, top, parsingOptions);
+
+            long startTime = System.currentTimeMillis();
+            CountTopWordsResult countTopWordsResult = wordCounter.countTopWords(files, top, parsingOptions, threads, mode);
+            long executionTime = System.currentTimeMillis() - startTime;
+
             List<WordCount> wordCounts = countTopWordsResult.wordCounts();
             List<ParsingError> parsingErrors = countTopWordsResult.parsingErrors();
-            AnalysisInfo analysisInfo = new AnalysisInfo(dirPath.getFileName().toString(), minLength, top);
+            AnalysisInfo analysisInfo = new AnalysisInfo(dirPath.getFileName().toString(), minLength, top, mode, threads, files.size(), executionTime);
             ResultOutput resultOutput = new ResultOutput(analysisInfo, wordCounts, parsingErrors);
             printer.print(resultOutput, outputPath);
 
             return 0;
+
         } catch (IOException e) {
             logger.error("Failed to read file: {}", e.getMessage());
             System.err.println("Error: " + e.getMessage());
