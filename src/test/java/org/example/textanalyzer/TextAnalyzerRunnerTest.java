@@ -6,7 +6,7 @@ import org.example.textanalyzer.model.AnalysisInfo;
 import org.example.textanalyzer.model.CountTopWordsResult;
 import org.example.textanalyzer.model.WordCount;
 import org.example.textanalyzer.output.Printer;
-import org.example.textanalyzer.output.ResultOutput;
+import org.example.textanalyzer.dto.AnalysisResultDto;
 import org.example.textanalyzer.parser.FileParser;
 import org.example.textanalyzer.service.WordCounter;
 import org.junit.jupiter.api.Test;
@@ -66,7 +66,7 @@ class TextAnalyzerRunnerTest {
         verify(fileCollector).collectFiles(Path.of("./texts"));
         verify(fileParser).parseStopWords(Path.of("./stop.txt"));
         verify(wordCounter).countTopWords(eq(files), eq(10), any(), eq(4), eq(MultithreadingMode.MULTI));
-        verify(printer).print(any(ResultOutput.class), isNull());
+        verify(printer).print(any(AnalysisResultDto.class), isNull());
     }
 
     @Test
@@ -86,7 +86,7 @@ class TextAnalyzerRunnerTest {
         Integer exitCode = runner.call();
 
         assertThat(exitCode).isZero();
-        verify(printer).print(any(ResultOutput.class), eq(Path.of("./output.json")));
+        verify(printer).print(any(AnalysisResultDto.class), eq(Path.of("./output.json")));
     }
 
     @Test
@@ -165,10 +165,10 @@ class TextAnalyzerRunnerTest {
 
         Integer exitCode = runner.call();
 
-        ArgumentCaptor<ResultOutput> captor = ArgumentCaptor.forClass(ResultOutput.class);
+        ArgumentCaptor<AnalysisResultDto> captor = ArgumentCaptor.forClass(AnalysisResultDto.class);
         verify(printer).print(captor.capture(), isNull());
 
-        AnalysisInfo info = captor.getValue().analysisInfo();
+        AnalysisInfo info = captor.getValue().info();
         assertThat(exitCode).isZero();
         assertThat(info.mode()).isEqualTo(MultithreadingMode.MULTI);
         assertThat(info.threads()).isEqualTo(4);
