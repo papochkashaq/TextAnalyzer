@@ -1,5 +1,6 @@
 package org.example.textanalyzer.output;
 
+import org.example.textanalyzer.dto.AnalysisResultDto;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
@@ -19,11 +20,11 @@ public class UnifiedPrinter implements Printer {
     }
 
     @Override
-    public void print(ResultOutput resultOutput, Path outputPath) {
+    public void print(AnalysisResultDto analysisResultDto, Path outputPath) {
         if (outputPath == null) {
-            consolePrinter.print(resultOutput);
+            consolePrinter.print(analysisResultDto);
         } else {
-            jsonPrinter.print(resultOutput, outputPath);
+            jsonPrinter.print(analysisResultDto, outputPath);
         }
     }
 }

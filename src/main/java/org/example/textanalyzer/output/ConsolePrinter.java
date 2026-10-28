@@ -1,15 +1,16 @@
 package org.example.textanalyzer.output;
 
 import org.example.textanalyzer.model.AnalysisInfo;
+import org.example.textanalyzer.dto.AnalysisResultDto;
 import org.example.textanalyzer.model.WordCount;
 
 import java.util.List;
 
 public class ConsolePrinter {
 
-    public void print(ResultOutput resultOutput) {
-        List<WordCount> list = resultOutput.words();
-        AnalysisInfo analysisInfo = resultOutput.analysisInfo();
+    public void print(AnalysisResultDto analysisResultDto) {
+        List<WordCount> list = analysisResultDto.words();
+        AnalysisInfo analysisInfo = analysisResultDto.info();
         if (list == null || list.isEmpty()) {
             System.out.println("There are no words in these files.");
             return;

@@ -1,5 +1,6 @@
 package org.example.textanalyzer.output;
 
+import org.example.textanalyzer.dto.AnalysisResultDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.core.JacksonException;
@@ -17,7 +18,7 @@ public class JsonPrinter {
         this.objectMapper = objectMapper;
     }
 
-    public void print(ResultOutput resultOutput, Path outputPath) {
+    public void print(AnalysisResultDto analysisResultDto, Path outputPath) {
         if (outputPath == null) {
             logger.error("Output path is empty: {}", outputPath);
             throw new IllegalArgumentException("Output path is empty");
@@ -28,7 +29,7 @@ public class JsonPrinter {
 
         try {
             objectMapper.writerWithDefaultPrettyPrinter().
-                    writeValue(outputPath.toFile(), resultOutput);
+                    writeValue(outputPath.toFile(), analysisResultDto);
             logger.info("Results saved to: {}", outputPath);
         } catch (JacksonException e) {
             logger.error("Failed to write in file: {}", outputPath, e);

@@ -1,24 +1,16 @@
 package org.example.textanalyzer;
 
 import org.example.textanalyzer.config.MultithreadingMode;
-import org.example.textanalyzer.io.FileCollector;
-import org.example.textanalyzer.model.AnalysisInfo;
-import org.example.textanalyzer.model.CountTopWordsResult;
-import org.example.textanalyzer.model.WordCount;
+import org.example.textanalyzer.dto.AnalysisParams;
 import org.example.textanalyzer.output.Printer;
-import org.example.textanalyzer.output.ResultOutput;
-import org.example.textanalyzer.parser.FileParser;
-import org.example.textanalyzer.parser.ParsingError;
-import org.example.textanalyzer.parser.ParsingOptions;
-import org.example.textanalyzer.service.WordCounter;
+import org.example.textanalyzer.dto.AnalysisResultDto;
+import org.example.textanalyzer.service.AnalysisService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import picocli.CommandLine;
 
-import java.io.IOException;
 import java.nio.file.Path;
-import java.util.*;
 import java.util.concurrent.Callable;
 
 @Component
@@ -31,9 +23,7 @@ import java.util.concurrent.Callable;
 )
 public class TextAnalyzerRunner implements Callable<Integer> {
 
-    private final FileParser fileParser;
-    private final FileCollector fileCollector;
-    private final WordCounter wordCounter;
+    private final AnalysisService analysisService;
     private final Printer printer;
     private static final Logger logger = LoggerFactory.getLogger(TextAnalyzerRunner.class);
 
@@ -54,10 +44,8 @@ public class TextAnalyzerRunner implements Callable<Integer> {
     private MultithreadingMode mode;
 
 
-    public TextAnalyzerRunner(FileParser fileParser, FileCollector fileCollector, WordCounter wordCounter, Printer printer) {
-        this.fileParser = fileParser;
-        this.fileCollector = fileCollector;
-        this.wordCounter = wordCounter;
+    public TextAnalyzerRunner(AnalysisService analysisService, Printer printer) {
+        this.analysisService = analysisService;
         this.printer = printer;
     }
 
@@ -65,32 +53,11 @@ public class TextAnalyzerRunner implements Callable<Integer> {
     public Integer call() {
 
         try {
-            logger.info("Directory: {}, minWordLength: {}, topWords: {}", dirPath, minLength, top);
-
-            Set<String> stopWords = new HashSet<>();
-            if (stopWordsPath != null) {
-                stopWords = fileParser.parseStopWords(stopWordsPath);
-            }
-
-            List<Path> files = fileCollector.collectFiles(dirPath);
-            ParsingOptions parsingOptions = new ParsingOptions(minLength, stopWords);
-
-            long startTime = System.currentTimeMillis();
-            CountTopWordsResult countTopWordsResult = wordCounter.countTopWords(files, top, parsingOptions, threads, mode);
-            long executionTime = System.currentTimeMillis() - startTime;
-
-            List<WordCount> wordCounts = countTopWordsResult.wordCounts();
-            List<ParsingError> parsingErrors = countTopWordsResult.parsingErrors();
-            AnalysisInfo analysisInfo = new AnalysisInfo(dirPath.getFileName().toString(), minLength, top, mode, threads, files.size(), executionTime);
-            ResultOutput resultOutput = new ResultOutput(analysisInfo, wordCounts, parsingErrors);
-            printer.print(resultOutput, outputPath);
+            AnalysisResultDto analysisResultDto = analysisService.startCliAnalysis(new AnalysisParams(dirPath, minLength, top, outputPath, stopWordsPath, threads, mode));
+            printer.print(analysisResultDto, outputPath);
 
             return 0;
 
-        } catch (IOException e) {
-            logger.error("Failed to read file: {}", e.getMessage());
-            System.err.println("Error: " + e.getMessage());
-            return 1;
         }
         catch (Exception e) {
             logger.error("Application failed: {}", e.getMessage(), e);
